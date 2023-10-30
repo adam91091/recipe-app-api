@@ -11,11 +11,14 @@ from user.serializers import (
 )
 
 
-# DRF provides template CBVs, which are organized according to the REST convention.
-# The following class is used for the customization and overriding the default behavior
+# DRF provides template CBVs, which are organized according to the
+# REST convention.
+# The following class is used for the customization and overriding
+# the default behavior
 class CreateUserView(generics.CreateAPIView):
     """Create a new user in the system."""
-    # View reacts for the incoming request, by calling serializer class - validation first,
+    # View reacts for the incoming request, by calling serializer
+    # class - validation first,
     # and if validation pass, then .create method is called
     serializer_class = UserSerializer
 
@@ -23,8 +26,10 @@ class CreateUserView(generics.CreateAPIView):
 class CreateTokenView(ObtainAuthToken):
     """Create a new auth token for user."""
     serializer_class = AuthTokenSerializer
-    # this is only for browsable api (Swagger) - without renderer, it wont be present in browsable api
-    # it can be considered as an issue of ObtainAuthToken view - why it is not enabled by default in browsable api
+    # this is only for browsable api (Swagger) - without renderer,
+    # it wont be present in browsable api
+    # it can be considered as an issue of ObtainAuthToken view -
+    # why it is not enabled by default in browsable api
     renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
 
 
@@ -35,7 +40,8 @@ class ManageUserView(generics.RetrieveUpdateAPIView):
     # require the user is authenticated
     permission_classes = [permissions.IsAuthenticated, ]
 
-    # override get_object. When GET request is sent, then authenticated user is returned.
+    # override get_object. When GET request is sent, then
+    # authenticated user is returned.
     def get_object(self):
         """Retrieve and return the authenticated user."""
         return self.request.user

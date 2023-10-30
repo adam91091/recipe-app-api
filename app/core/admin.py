@@ -51,3 +51,5 @@ class UserAdmin(BaseUserAdmin):
 # Register User model using UserAdmin manager.
 # If 2nd arg is ommited, then default UserAdmin manager will be used
 admin.site.register(models.User, UserAdmin)
+admin.site.register(models.Recipe)
+admin.site.register(models.Tag)

@@ -27,5 +27,8 @@ RUN python -m venv /py && \
         django-user
 
 ENV PATH="/py/bin:$PATH"
+# Only for VSC purpose
+RUN mkdir -p /home/django-user && \
+    chmod -R 777 /home/django-user
 
 USER django-user
