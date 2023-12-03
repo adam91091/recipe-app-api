@@ -1,6 +1,12 @@
 """
 Views for the recipe APIs.
 """
+from drf_spectacular.utils import (
+    extend_schema_view,
+    extend_schema,
+    OpenApiParameter,
+    OpenApiTypes,
+)
 from rest_framework import (
     viewsets,
     mixins,
@@ -19,6 +25,24 @@ from core.models import (
 from recipe import serializers
 
 
+# extend swagger doc of Recipe list view endpoint
+# for 2 parameters
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                'tags',
+                OpenApiTypes.STR,
+                description='Comma separated list of IDs to filter',
+            ),
+            OpenApiParameter(
+                'ingredients',
+                OpenApiTypes.STR,
+                description='Comma separated list of ingredient IDs to filter',
+            )
+        ]
+    )
+)
 class RecipeViewset(viewsets.ModelViewSet):
     """View for manage recipe APIs."""
     serializer_class = serializers.RecipeDetailSerialzer
@@ -26,11 +50,29 @@ class RecipeViewset(viewsets.ModelViewSet):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
+    def _params_to_ints(self, qs):
+        """Convert a list of strings to integeres."""
+        return [int(str_id) for str_id in qs.split(',')]
+
     # add additional logic for processing queryset which is returned by api
     def get_queryset(self):
         """Retrieve recipes for authenticated user."""
         # -id means in reverse order
-        return self.queryset.filter(user=self.request.user).order_by('-id')
+        tags = self.request.query_params.get('tags')
+        ingredients = self.request.query_params.get('ingredients')
+        queryset = self.queryset
+        if tags:
+            tag_ids = self._params_to_ints(tags)
+            queryset = queryset.filter(tags__id__in=tag_ids)
+        if ingredients:
+            ingredient_ids = self._params_to_ints(ingredients)
+            queryset = queryset.filter(ingredients__id__in=ingredient_ids)
+
+        # distinct same as sql - remove duplicates. Duplicates may occur
+        # if multiple recipes assigned to the same tag or ingredient
+        return queryset.filter(
+            user=self.request.user
+        ).order_by('-id').distinct()
 
     def get_serializer_class(self):
         """Return the serializer class for request."""
@@ -65,6 +107,17 @@ class RecipeViewset(viewsets.ModelViewSet):
 
 # mixins must be defined before GenericViewSet, because it overrides some
 #  behavior
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                'assigned_only',
+                OpenApiTypes.INT, enum=[0, 1],
+                description='Filter by items assigned to recipes.',
+            )
+        ]
+    )
+)
 class BaseRecipeAttrViewSet(mixins.DestroyModelMixin,
                             mixins.UpdateModelMixin,
                             mixins.ListModelMixin,
@@ -80,7 +133,17 @@ class BaseRecipeAttrViewSet(mixins.DestroyModelMixin,
         # be explicit when returning a queryset in providing ordering.
         # do not trust default behavior, because it may be different across
         # various databases and versions
-        return self.queryset.filter(user=self.request.user).order_by('-name')
+        assigned_only = bool(
+            int(self.request.query_params.get('assigned_only', 0))
+        )
+        queryset = self.queryset
+        if assigned_only:
+            # set only tags/ingredients which have assigned recipe field
+            queryset = queryset.filter(recipe__isnull=False)
+
+        return queryset.filter(
+            user=self.request.user
+        ).order_by('-name').distinct()
 
 
 class TagViewSet(BaseRecipeAttrViewSet):
